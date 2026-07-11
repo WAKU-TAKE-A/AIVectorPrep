@@ -37,6 +37,18 @@
   - `--value-inside` / `--value-outside`: 範囲内・範囲外の置き換え値（デフォルト: 内側が0、外側が255）
   - `--turdsize`: ノイズ除去サイズ（Potraceに渡すパラメータ）
 
+### [analyze_text_regions.py](file:///c:/UserData/nishida/Git/AIVectorPrep/analyze_text_regions.py) (汎用)
+`extract_paths.py` が出力した `metadata*.json` を解析し、テキスト行のバウンディングボックスを実測値で抽出する汎用 CLI です。
+- **主なオプション**:
+  - `-m / --metadata`: 入力 metadata JSON（必須）
+  - `-o / --output`: 出力 JSON パス（省略時は自動命名）
+  - `--area-max / --area-min`: グリフとみなす bbox 面積の上下限（省略時は画像サイズから自動計算）
+  - `--dim-max`: グリフとみなす bbox 最大辺長（省略時は自動計算）
+  - `--line-tol`: 行クラスタリングの y 方向許容幅（省略時は自動計算）
+  - `--min-paths`: 1行とみなす最小パス数（デフォルト: 3）
+  - `--scale`: 自動計算される全閾値を一括スケーリング（デフォルト: 1.0）
+  - `-v / --verbose`: 詳細ログ出力
+
 ---
 
 ## 3. 現在の一時スクリプト一覧 (`temp_scripts/` 配下)
@@ -47,3 +59,9 @@
   - 評価済みメタデータと個別SVGから最終的な統合SVGを構築する初期試作スクリプト。
 - **[temp_scripts/test_svg_parser.py](file:///c:/UserData/nishida/Git/AIVectorPrep/temp_scripts/test_svg_parser.py)** (`# Run count: 2`)
   - SVGパスのパース処理とアフィン行列計算の精度をチェックするための単体テスト用スクリプト。
+- **[temp_scripts/analyze_text_regions.py](file:///c:/UserData/nishida/Git/AIVectorPrep/temp_scripts/analyze_text_regions.py)** (`# Run count: 1`)
+  - 旧版（固定閾値）。ルートの汎用版 `analyze_text_regions.py` に昇進済み。参照のみ。
+- **[temp_scripts/crop_and_embed.py](file:///c:/UserData/nishida/Git/AIVectorPrep/temp_scripts/crop_and_embed.py)** (`# Run count: 3`)
+  - `original002.png` からイラスト領域をクロップし、base64 で `text002.svg` に埋め込む。
+- **[temp_scripts/embed_into_text003.py](file:///c:/UserData/nishida/Git/AIVectorPrep/temp_scripts/embed_into_text003.py)** (`# Run count: 2`)
+  - 既存クロップ画像を `text003.svg` に埋め込む。
