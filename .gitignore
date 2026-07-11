@@ -1,0 +1,10 @@
+_00_初期資料/
+_01_dual-model-operation-kit/
+.venv/
+__pycache__/
+Inputs/
+Outputs/
+potrace.exe
+potrace.zip
+potrace_bin/
+temp_scripts/
