@@ -291,8 +291,33 @@ def main():
     parser.add_argument("--alphamax", type=float, default=1.0)
     parser.add_argument("--opttolerance", type=float, default=0.2)
     parser.add_argument("--force", action="store_true")
+    parser.add_argument("--prefix", type=str, default=None, help="Prefix for output files. If provided, disables auto-increment.")
     
     args = parser.parse_args()
+
+    # Remove the existing state files at the start of processing
+    for state_file in ["current_working_folder.txt", "param_extract_paths.txt"]:
+        if os.path.exists(state_file):
+            try:
+                os.remove(state_file)
+            except Exception as e:
+                print(f"Warning: Failed to delete {state_file}: {e}", file=sys.stderr)
+
+    # Auto-generate run folder if targeting the root "Outputs" directory
+    out_dir_base = os.path.basename(os.path.normpath(args.OUTPUT_DIRECTORY))
+    if out_dir_base.lower() == "outputs":
+        import re
+        base_name = os.path.splitext(os.path.basename(args.INPUT))[0]
+        run_idx = 1
+        os.makedirs(args.OUTPUT_DIRECTORY, exist_ok=True)
+        for d in os.listdir(args.OUTPUT_DIRECTORY):
+            if d.startswith(f"{base_name}_"):
+                match = re.search(r'_(\d+)$', d)
+                if match:
+                    idx = int(match.group(1))
+                    if idx >= run_idx:
+                        run_idx = idx + 1
+        args.OUTPUT_DIRECTORY = os.path.join(args.OUTPUT_DIRECTORY, f"{base_name}_{run_idx:03d}")
 
     if os.path.exists(args.OUTPUT_DIRECTORY) and not args.force:
         print(f"Error: Output directory already exists: {args.OUTPUT_DIRECTORY}\nUse --force to overwrite.", file=sys.stderr)
@@ -321,25 +346,36 @@ def main():
         # Invoke Potrace
         svg_root = run_potrace(temp_pbm_path, args.turdsize, args.alphamax, args.opttolerance)
         
-        # Determine version suffix (e.g., 001, 002)
         os.makedirs(args.OUTPUT_DIRECTORY, exist_ok=True)
-        existing_combined = [f for f in os.listdir(args.OUTPUT_DIRECTORY) if f.startswith("combined") and f.endswith(".svg")]
-        max_idx = 0
-        import re
-        for f in existing_combined:
-            match = re.search(r"combined(\d+)\.svg", f)
-            if match:
-                idx = int(match.group(1))
-                if idx > max_idx:
-                    max_idx = idx
-        v_str = f"{max_idx + 1:03d}"
+        
+        if args.prefix:
+            v_str = args.prefix
+            original_file = f"{args.prefix}_original.png"
+            combined_file = f"{args.prefix}_combined.svg"
+            metadata_file = f"{args.prefix}_metadata.json"
+            svgs_folder = f"{args.prefix}_svgs"
+        else:
+            existing_combined = [f for f in os.listdir(args.OUTPUT_DIRECTORY) if f.startswith("combined") and f.endswith(".svg")]
+            max_idx = 0
+            import re
+            for f in existing_combined:
+                match = re.search(r"combined(\d+)\.svg", f)
+                if match:
+                    idx = int(match.group(1))
+                    if idx > max_idx:
+                        max_idx = idx
+            v_str = f"{max_idx + 1:03d}"
+            original_file = f"original{v_str}.png"
+            combined_file = f"combined{v_str}.svg"
+            metadata_file = f"metadata{v_str}.json"
+            svgs_folder = f"svgs{v_str}"
         
         # Copy original
-        original_copy_path = os.path.join(args.OUTPUT_DIRECTORY, f"original{v_str}.png")
+        original_copy_path = os.path.join(args.OUTPUT_DIRECTORY, original_file)
         orig_img.save(original_copy_path, format="PNG")
         
         # Create svgs folder
-        svgs_dir = os.path.join(args.OUTPUT_DIRECTORY, f"svgs{v_str}")
+        svgs_dir = os.path.join(args.OUTPUT_DIRECTORY, svgs_folder)
         os.makedirs(svgs_dir, exist_ok=True)
         
         # Parse SVG and transform
@@ -348,8 +384,8 @@ def main():
         metadata = {
             "version": v_str,
             "source": os.path.basename(args.INPUT),
-            "originalImage": f"original{v_str}.png",
-            "combinedSvg": f"combined{v_str}.svg",
+            "originalImage": original_file,
+            "combinedSvg": combined_file,
             "width": orig_img.width,
             "height": orig_img.height,
             "parameters": {
@@ -369,7 +405,7 @@ def main():
         }
         
         # Generate combined SVG file and individual SVGs
-        combined_svg_path = os.path.join(args.OUTPUT_DIRECTORY, f"combined{v_str}.svg")
+        combined_svg_path = os.path.join(args.OUTPUT_DIRECTORY, combined_file)
         svg_paths = []
         
         for idx, d_str in enumerate(raw_paths, start=1):
@@ -385,7 +421,7 @@ def main():
                 
             metadata["paths"].append({
                 "id": path_id,
-                "file": f"svgs{v_str}/{path_id}.svg",
+                "file": f"{svgs_folder}/{path_id}.svg",
                 "boundingBox": bbox,
                 "subpathCount": subpaths,
                 "pointCount": points,
@@ -401,9 +437,20 @@ def main():
             f.write(svg_content)
             
         metadata["pathCount"] = len(raw_paths)
-        with open(os.path.join(args.OUTPUT_DIRECTORY, f"metadata{v_str}.json"), "w", encoding="utf-8") as f:
+        with open(os.path.join(args.OUTPUT_DIRECTORY, metadata_file), "w", encoding="utf-8") as f:
             json.dump(metadata, f, indent=2)
             
+        print(f"\n[SUCCESS] Saved all outputs to folder: {args.OUTPUT_DIRECTORY}")
+        
+        # Write to current_working_folder.txt in the root directory
+        with open("current_working_folder.txt", "w", encoding="utf-8") as cwf:
+            cwf.write(args.OUTPUT_DIRECTORY.replace("\\", "/"))
+            
+        # Write the binarization parameters to param_extract_paths.txt
+        param_str = f"--grayscale-method {args.grayscale_method} --binarize-min {args.binarize_min} --binarize-max {args.binarize_max} --value-inside {args.value_inside} --value-outside {args.value_outside}"
+        with open("param_extract_paths.txt", "w", encoding="utf-8") as p_file:
+            p_file.write(param_str)
+        
     except FileNotFoundError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

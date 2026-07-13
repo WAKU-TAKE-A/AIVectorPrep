@@ -54,7 +54,7 @@ def build_parser() -> argparse.ArgumentParser:
     thr.add_argument(
         "--area-max", type=float, default=None,
         metavar="PX2",
-        help="グリフとみなす bbox 面積の上限 [px^2]  (default: (short_side*0.052)^2)",
+        help="グリフとみなす bbox 面積の上限 [px^2]  (default: (short_side*0.06)^2)",
     )
     thr.add_argument(
         "--area-min", type=float, default=30.0,
@@ -70,6 +70,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--line-tol", type=float, default=None,
         metavar="PX",
         help="行クラスタリングの y 方向許容幅 [px]  (default: short_side*0.016)",
+    )
+    thr.add_argument(
+        "--char-gap", type=float, default=None,
+        metavar="PX",
+        help="同じ行内で別ブロックとみなす X 方向の隙間 [px]  (default: short_side*0.04)",
     )
     thr.add_argument(
         "--min-paths", type=int, default=3,
@@ -101,18 +106,21 @@ def compute_thresholds(W: int, H: int, args) -> dict:
     scale = args.scale
 
     area_max = args.area_max if args.area_max is not None \
-        else (short * 0.052 * scale) ** 2
+        else (short * 0.06 * scale) ** 2
     area_min = args.area_min
     dim_max  = args.dim_max  if args.dim_max  is not None \
         else short * 0.10 * scale
     line_tol = args.line_tol if args.line_tol is not None \
         else short * 0.016 * scale
+    char_gap = args.char_gap if args.char_gap is not None \
+        else short * 0.04 * scale
 
     return dict(
         area_max=area_max,
         area_min=area_min,
         dim_max=dim_max,
         line_tol=line_tol,
+        char_gap=char_gap,
         min_paths=args.min_paths,
     )
 
@@ -152,6 +160,34 @@ def cluster_lines(text_candidates: list, line_tol: float) -> list:
             lines.append({"cy_mean": cy, "paths": [p]})
     return lines
 
+
+def split_lines_horizontally(lines: list, char_gap: float) -> list:
+    """Y座標でまとまった行を、X座標の大きな隙間でさらに分割する。"""
+    split_lines = []
+    for line in lines:
+        paths = line["paths"]
+        # パスをX座標順にソート
+        paths.sort(key=lambda p: p["boundingBox"]["x"])
+        
+        current_block_paths = []
+        current_right = -float('inf')
+        
+        for p in paths:
+            bb = p["boundingBox"]
+            x_left = bb["x"]
+            
+            if not current_block_paths or (x_left - current_right) <= char_gap:
+                current_block_paths.append(p)
+                current_right = max(current_right, x_left + bb["width"])
+            else:
+                split_lines.append({"cy_mean": line["cy_mean"], "paths": current_block_paths})
+                current_block_paths = [p]
+                current_right = x_left + bb["width"]
+                
+        if current_block_paths:
+            split_lines.append({"cy_mean": line["cy_mean"], "paths": current_block_paths})
+            
+    return split_lines
 
 def aggregate_lines(lines: list, min_paths: int) -> list:
     """各行の集約 bbox を計算して返す。"""
@@ -211,7 +247,8 @@ def main():
 
     # ── 行クラスタリング ──
     raw_lines   = cluster_lines(text_cands, thr["line_tol"])
-    text_lines  = aggregate_lines(raw_lines, thr["min_paths"])
+    split_lines = split_lines_horizontally(raw_lines, thr["char_gap"])
+    text_lines  = aggregate_lines(split_lines, thr["min_paths"])
 
     # ── 結果表示 ──
     print(f"\n{'行':>3}  {'y_top':>6} {'y_bot':>6} {'x_left':>7} {'x_right':>8} "

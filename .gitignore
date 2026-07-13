@@ -8,3 +8,5 @@ potrace.exe
 potrace.zip
 potrace_bin/
 temp_scripts/
+current_working_folder.txt
+param_extract_paths.txt
