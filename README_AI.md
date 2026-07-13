@@ -8,9 +8,9 @@
 
 リポジトリルートをクリーンに保つため、スクリプトは以下の分類に従って厳格に管理します。
 
-### A. 汎用・システムスクリプト (リポジトリルートに配置)
+### A. 汎用・システムスクリプト (必ず `scripts/` に配置)
 - 主要なパイプライン処理を行う、高い汎用性を持ったプロダクションコードです。
-- 例: `extract_paths.py` (画像の前処理・二値化・Potraceによるパス抽出・実座標計測を担うコアツール)
+- 例: `scripts/extract_paths.py` (画像の前処理・二値化・Potraceによるパス抽出・実座標計測を担うコアツール)
 
 ### B. 一時スクリプト・検証用コード (必ず `temp_scripts/` に配置)
 - 特定のタスク、検証、または1回限りのデータ操作（カラーサンプリング、SVGの一時結合など）のために作成されたスクリプトです。
@@ -27,28 +27,28 @@
 
 ## 2. コアツール紹介
 
-### [extract_paths.py](file:///c:/UserData/nishida/Git/AIVectorPrep/extract_paths.py) (汎用)
+### [scripts/extract_paths.py](file:///c:/UserData/nishida/Git/AIVectorPrep/scripts/extract_paths.py) (汎用)
 画像からベクターパスを抽出するメインエンジンです。
 
-### [analyze_text_regions.py](file:///c:/UserData/nishida/Git/AIVectorPrep/analyze_text_regions.py) (汎用)
+### [scripts/analyze_text_regions.py](file:///c:/UserData/nishida/Git/AIVectorPrep/scripts/analyze_text_regions.py) (汎用)
 `extract_paths.py` が出力した `metadata*.json` を解析し、テキスト行のバウンディングボックスを実測値で抽出する汎用 CLI です。
 
-### [auto_cluster.py](file:///c:/UserData/nishida/Git/AIVectorPrep/auto_cluster.py) (汎用)
+### [scripts/auto_cluster.py](file:///c:/UserData/nishida/Git/AIVectorPrep/scripts/auto_cluster.py) (汎用)
 抽出されたSVGパス同士の「面積の重なり判定」を全BBoxに対して行い、自動的に部品（コンポーネント）単位の矩形にクラスタリングして `crop_config.json` を出力する自動グルーピングツールです。手動でのアタリ矩形指定を不要にします。
 
-### [draw_text_roi.py](file:///c:/UserData/nishida/Git/AIVectorPrep/draw_text_roi.py) (汎用)
+### [scripts/draw_text_roi.py](file:///c:/UserData/nishida/Git/AIVectorPrep/scripts/draw_text_roi.py) (汎用)
 `text_lines*.json` のバウンディングボックス座標を元に、画像に極小の番号ラベルと枠線を描画し、AI向けの「Set-of-Mark OCR用ナビゲーション画像」を生成するツールです。
 
-### [update_text_lines.py](file:///c:/UserData/nishida/Git/AIVectorPrep/update_text_lines.py) (汎用)
+### [scripts/update_text_lines.py](file:///c:/UserData/nishida/Git/AIVectorPrep/scripts/update_text_lines.py) (汎用)
 AIがOCRした結果（`{"1": "テキスト", "2": ""}` のような辞書データJSON）を読み込み、元の `text_lines*.json` の `text` キーを一括で上書き更新するツールです。
 
-### [erase_text_regions.py](file:///c:/UserData/nishida/Git/AIVectorPrep/erase_text_regions.py) (汎用)
+### [scripts/erase_text_regions.py](file:///c:/UserData/nishida/Git/AIVectorPrep/scripts/erase_text_regions.py) (汎用)
 `text_lines*.json` に基づき、文字が存在する領域を画像から背景色で塗りつぶし、「文字なし背景画像」を生成するツールです。
 
-### [crop_illustrations.py](file:///c:/UserData/nishida/Git/AIVectorPrep/crop_illustrations.py) (汎用)
+### [scripts/crop_illustrations.py](file:///c:/UserData/nishida/Git/AIVectorPrep/scripts/crop_illustrations.py) (汎用)
 `crop_config.json` に基づき、文字なし画像からイラスト部品単位の純粋なPNG画像を切り出して出力するツールです。コマンドライン引数で入力画像や出力先をオーバーライドできます。
 
-### [build_final_svg.py](file:///c:/UserData/nishida/Git/AIVectorPrep/build_final_svg.py) (汎用)
+### [scripts/build_final_svg.py](file:///c:/UserData/nishida/Git/AIVectorPrep/scripts/build_final_svg.py) (汎用)
 ベースとなるSVG（文字抜き）に、切り出したPNGパーツ群を `<image>` タグ（Base64埋め込み）で配置し、さらにOCRで読み取ったテキストを `<text>` タグで正確な座標にオーバーレイして、完全なハイブリッドSVGを生成する最終ビルドツールです。
 
 ---
@@ -63,7 +63,7 @@ AIがOCRした結果（`{"1": "テキスト", "2": ""}` のような辞書デー
 
 AIエージェントが画像を処理する際は、**必ず `step_executor.py` を用いて、ステップごとに指示を仰ぎながら**実行します。このスクリプトが「絶対のルールブック」です。
 
-基本的な流れは以下の全8ステップです（詳細は `python step_executor.py [1-8]` で確認すること）：
+基本的な流れは以下の全8ステップです（詳細は `python scripts/step_executor.py [1-8] current_working_folder.txt` で確認すること）：
 
 * **Step 1**: 初回パス抽出 (ベクター変換、メタデータ生成)
 * **Step 2**: テキスト領域抽出 (BBox生成とナビゲーション画像出力)
@@ -74,8 +74,8 @@ AIエージェントが画像を処理する際は、**必ず `step_executor.py`
 * **Step 7**: イラスト画像の切り出し (ラスターベースでのCrop。**【黄金律】人物やアイコンを無理にベクターパスで表現してはいけない！**)
 * **Step 8**: 統合SVGのビルド (PNG画像とテキストをSVGとして再構築)
 
-AIはステップ完了ごとに `python step_executor.py [次のステップ番号]` を実行し、指示に従って作業を進めてください。
-マジックナンバー（例: `demo006_001`）をAIが推測して埋め込むことは禁止です。必ず `current_working_folder.txt` や `param_extract_paths.txt` を読み取り、動的に対象ディレクトリや引数を決定してください。
+AIはステップ完了ごとに `python scripts/step_executor.py [次のステップ番号] current_working_folder.txt` を実行し、指示に従って作業を進めてください。
+マジックナンバー（例: `Outputs/demo006_001`）をAIが推測して埋め込むことは禁止です。必ず `current_working_folder.txt` を引数として渡し、動的に対象ディレクトリを決定してください。
 
 ---
 
