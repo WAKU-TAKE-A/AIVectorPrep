@@ -42,34 +42,34 @@ AIVectorPrep/
 
 ## 2. Core Tool Specifications
 
-### [scripts/step_executor.py](file:///c:/UserData/nishida/Git/AIVectorPrep/scripts/step_executor.py) (Orchestrator)
+### [scripts/step_executor.py](scripts/step_executor.py) (Orchestrator)
 Provides instructions and automatically builds parameter-injected command lines for each of the 8 steps. It relies on the dynamic working directory and parameter text files.
 - **Usage**: `python scripts/step_executor.py [1-8] current_working_folder.txt`
 
-### [scripts/extract_paths.py](file:///c:/UserData/nishida/Git/AIVectorPrep/scripts/extract_paths.py)
+### [scripts/extract_paths.py](scripts/extract_paths.py)
 Executes image binarization and runs Potrace to extract vector paths. Outputs path geometry and metadata.
 - Automatically handles new version directory generation under `Outputs/` during Step 1.
 - Tracks output state in `current_working_folder.txt` (normalized with forward slashes) and `param_extract_paths.txt`.
 
-### [scripts/analyze_text_regions.py](file:///c:/UserData/nishida/Git/AIVectorPrep/scripts/analyze_text_regions.py)
+### [scripts/analyze_text_regions.py](scripts/analyze_text_regions.py)
 Analyzes `01_raw_metadata.json` to identify bounding boxes of text lines using physical layout properties.
 
-### [scripts/draw_text_roi.py](file:///c:/UserData/nishida/Git/AIVectorPrep/scripts/draw_text_roi.py)
+### [scripts/draw_text_roi.py](scripts/draw_text_roi.py)
 Draws bounding boxes and numbers them on the original image to output `02_text_roi.png` for OCR visual reference.
 
-### [scripts/update_text_lines.py](file:///c:/UserData/nishida/Git/AIVectorPrep/scripts/update_text_lines.py)
+### [scripts/update_text_lines.py](scripts/update_text_lines.py)
 Injects OCR text from a dictionary JSON (`temp_scripts/ocr.json`) back into the metadata JSON.
 
-### [scripts/erase_text_regions.py](file:///c:/UserData/nishida/Git/AIVectorPrep/scripts/erase_text_regions.py)
+### [scripts/erase_text_regions.py](scripts/erase_text_regions.py)
 Fills text bounding boxes in the original image with the sampled background color, generating a text-free base image (`03_notext.png`).
 
-### [scripts/auto_cluster.py](file:///c:/UserData/nishida/Git/AIVectorPrep/scripts/auto_cluster.py)
+### [scripts/auto_cluster.py](scripts/auto_cluster.py)
 Analyzes vector path bounding boxes from the text-free image and groups overlapping/adjacent paths into logical component boxes (`06_crop_config.json`).
 
-### [scripts/crop_illustrations.py](file:///c:/UserData/nishida/Git/AIVectorPrep/scripts/crop_illustrations.py)
+### [scripts/crop_illustrations.py](scripts/crop_illustrations.py)
 Crops raster illustrations/components from the image using the coordinate configs from Step 6, outputting PNG parts.
 
-### [scripts/build_final_svg.py](file:///c:/UserData/nishida/Git/AIVectorPrep/scripts/build_final_svg.py)
+### [scripts/build_final_svg.py](scripts/build_final_svg.py)
 Aggregates the base vector SVG, cropped illustration PNGs (encoded as Base64 `<image>`), and OCRed text (`<text>` tags) into a final single SVG file.
 
 ---
